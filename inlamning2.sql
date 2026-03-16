@@ -1,8 +1,9 @@
 -- Gabriel Gustafsson - YH25
 -- Inlämning 2 - Avancerad SQL & Databashantering
--- Bokstugan
 
+-- Bokstugan
 -- Skapa databasen och använd den
+DROP DATABASE IF EXISTS Bokstugan;
 CREATE DATABASE Bokstugan;
 USE Bokstugan;
 
@@ -35,6 +36,7 @@ CREATE TABLE Bestallningar (
 );
 
 -- Tabell: Orderrader
+
 CREATE TABLE Orderrader (
     OrderradID INT AUTO_INCREMENT PRIMARY KEY,						-- Ett unikt id för varje orderrad så att man vet vilken order det är.
     OrderID INT NOT NULL,
@@ -44,7 +46,6 @@ CREATE TABLE Orderrader (
 	FOREIGN KEY (OrderID) REFERENCES Bestallningar(OrderID), 		-- Hämtar primärnyckel från OrderID i Beställningar-tabellen.
 	FOREIGN KEY (BokID) REFERENCES Bocker(BokID) 					-- Hämtar primärnyckel från BokID i Böcker-tabellen.
 );
-
 -- Loggtabell för nya kunder
 CREATE TABLE KundLogg (
     LoggID INT AUTO_INCREMENT PRIMARY KEY,
@@ -53,6 +54,42 @@ CREATE TABLE KundLogg (
     RegistreradDatum TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Index på e-post i Kunder
+CREATE INDEX idx_epost ON Kunder(Epost);
+
+-- Se vårt index
+SHOW INDEX FROM Kunder;
+
+-- =========
+-- TRIGGERS
+-- =========
+
+-- Trigger 1: logga när en ny kund registreras
+DELIMITER $$
+
+CREATE TRIGGER logga_ny_kund
+AFTER INSERT ON Kunder
+FOR EACH ROW
+BEGIN
+    INSERT INTO KundLogg (KundID, Namn)
+    VALUES (NEW.KundID, NEW.Namn);
+END $$
+
+-- Trigger 2: minska lagersaldo när en orderrad läggs till
+CREATE TRIGGER minska_lager
+AFTER INSERT ON Orderrader
+FOR EACH ROW
+BEGIN
+    UPDATE Bocker
+    SET Lagerstatus = Lagerstatus - NEW.Antal
+    WHERE BokID = NEW.BokID;
+END $$
+
+DELIMITER ;
+
+-- ========
+-- TESTDATA
+-- ========
 
 -- Infogar testdata i tabellen Kunder
 INSERT INTO Kunder (Namn, Epost, Telefon, Adress) VALUES
@@ -60,60 +97,130 @@ INSERT INTO Kunder (Namn, Epost, Telefon, Adress) VALUES
 ('Bengt Bengtsson', 'bengt@mail.com', '070-2222222', 'Lilla vägen 2, 222 22 Göteborg'),
 ('Carl Carlsson', 'carl@mail.com', '070-3333333', 'Norra vägen 3, 333 33 Malmö'),
 ('Didrik Didriksson', 'didrik@mail.com', '070-4444444', 'Södra vägen 4, 444 44 Kalmar'),
-('Erik Eriksson', 'erik@mail.com', '070-5555555', 'Östra vägen 5, 555 55 Nybro');			-- Lägger till kund som har registrerat sig men inte gjort en beställning ännu.
+('Erik Eriksson', 'erik@mail.com', '070-5555555', 'Östra vägen 5, 555 55 Nybro');
 
 -- Infogar testdata i tabellen Böcker
-INSERT INTO Bocker (Titel, ISBN, Forfattare, Pris, Lagerstatus) VALUES
-('Star Wars: Heir to the Empire', '9780553296129', 'Timothy Zahn', 129.00, 10),
-('The Game', '9780470835847', 'Ken Dryden', 159.00, 5),
-('Clean Code: A Handbook of Agile Software Craftsmanship', '9780132350884', 'Robert C. Martin', 499.00, 8),
-('The Hobbit', '9780261102217', 'J.R.R. Tolkien', 199.00, 25),
-('Harry Potter and the Prisoner of Azkaban', '9780439136365', 'J.K. Rowling', 149.00, 18),		-- Lägger till en bok som inte har en beställning för tillfället
-('Band of Brothers', '9780743211383', 'Stephen E. Ambrose', 179.00, 10),						-- Lägger till en bok som inte har en beställning för tillfället
-('The Maze Runner', '9780385737944', 'James Dashner', 159.00, 16);								-- Lägger till en bok som inte har en beställning för tillfället
+INSERT INTO Bocker (ISBN, Titel, Forfattare, Pris, Lagerstatus) VALUES
+(9780553296129, 'Star Wars: Heir to the Empire', 'Timothy Zahn', 129.00, 10),
+(9780470835847, 'The Game', 'Ken Dryden', 159.00, 5),
+(9780132350884, 'Clean Code: A Handbook of Agile Software Craftsmanship', 'Robert C. Martin', 499.00, 8),
+(9780261102217, 'The Hobbit', 'J.R.R. Tolkien', 199.00, 25),
+(9780439136365, 'Harry Potter and the Prisoner of Azkaban', 'J.K. Rowling', 149.00, 18),
+(9780743211383, 'Band of Brothers', 'Stephen E. Ambrose', 179.00, 10),
+(9780385737944, 'The Maze Runner', 'James Dashner', 159.00, 16);
 
 -- Infogar testdata i tabellen Beställningar
 -- Här kopplas Kunder till sin order.
 INSERT INTO Bestallningar (KundID, Datum, Totalbelopp) VALUES
-(1, '2024-03-01', 328.00),  -- Anna: Star Wars (129) + Hobbit (199)
-(1, '2024-03-15', 398.00),  -- Anna: 2 x Hobbit (199x2)
-(2, '2024-03-05', 159.00),  -- Bengt: The Game
-(3, '2024-03-10', 499.00),  -- Carl: Clean Code
-(1, '2024-03-20', 499.00),  -- Anna: Clean Code
-(4, '2024-03-22', 199.00),  -- Didrik: Hobbit
-(2, '2024-03-25', 129.00);  -- Bengt: Star Wars
+(1, '2024-03-01', 328.00), 
+(1, '2024-03-15', 398.00), 
+(2, '2024-03-05', 159.00),
+(3, '2024-03-10', 499.00),
+(1, '2024-03-20', 499.00),
+(4, '2024-03-22', 199.00),
+(2, '2024-03-25', 129.00),
+(1, '2024-03-28', 149.00); 
 
 -- Infogar testdata i tabellen Orderrader
 INSERT INTO Orderrader (OrderID, BokID, Antal, Pris) VALUES
-(1, 1, 1, 129.00),  -- Order 1: 1 x Star Wars
-(1, 4, 1, 199.00),  -- Order 1: 1 x Hobbit
-(2, 4, 2, 199.00),  -- Order 2: 2 x Hobbit
-(3, 2, 1, 159.00),  -- Order 3: 1 x The Game
-(4, 3, 1, 499.00),  -- Order 4: 1 x Clean Code
-(5, 3, 1, 499.00),  -- Order 5: 1 x Clean Code
-(6, 4, 1, 199.00),  -- Order 6: 1 x Hobbit 
-(7, 1, 1, 129.00);  -- Order 7: 1 x Star Wars
+(1, 1, 1, 129.00),
+(1, 4, 1, 199.00),
+(2, 4, 2, 199.00),
+(3, 2, 1, 159.00),
+(4, 3, 1, 499.00),
+(5, 3, 1, 499.00),
+(6, 4, 1, 199.00),
+(7, 1, 1, 129.00),
+(8, 5, 1, 149.00);
 
+-- ======================================
+-- SELECTS FÖR ATT KONTROLLERA DATABASEN
+-- ======================================
 
--- Visa allt i varje tabell
+-- Hämta alla kunder
 SELECT * FROM Kunder;
-SELECT * FROM Bocker ORDER BY Pris DESC; -- Lista böcker dyrast till billigast
-SELECT * FROM Bestallningar;
-SELECT * FROM Orderrader;
 
--- Visa beställningar med kundnamn, orderID, datum och totalbelopp
+-- Hämta alla beställningar
+SELECT * FROM Bestallningar;
+
+-- Filtrera kunder baserat på namn
+SELECT * FROM Kunder
+WHERE Namn LIKE 'Anna%';
+
+-- Filtrera kunder baserat på e-post
+SELECT * FROM Kunder
+WHERE Epost LIKE '%mail.com';
+
+-- Sortera produkter efter pris, dyrast först
+SELECT * FROM Bocker
+ORDER BY Pris DESC;
+
+-- ====================
+-- UPPDATERA & TA BORT
+-- ====================
+
+-- Uppdatera en kunds e-postadress
+UPDATE Kunder
+SET Epost = 'anna.andersson@mail.com'
+WHERE KundID = 1;
+
+-- Kontrollera uppdateringen
+SELECT * FROM Kunder WHERE KundID = 1;
+
+-- Transaktion med ROLLBACK
+START TRANSACTION;
+
+-- Tar bort kund med kundID 5
+DELETE FROM Kunder
+WHERE KundID = 5;
+
+-- Kontrollera att kunden är borttagen i den aktiva transaktionen
+SELECT * FROM Kunder;
+
+-- Ångra borttagningen
+ROLLBACK;
+
+-- Kontrollera att kunden finns kvar igen
+SELECT * FROM Kunder WHERE KundID = 5;
+
+-- ===================
+-- 3. JOINs & GROUP BY
+-- ====================
+
+-- INNER JOIN: visa kunder som har lagt beställningar
 SELECT Kunder.Namn, Bestallningar.OrderID, Bestallningar.Datum, Bestallningar.Totalbelopp FROM Bestallningar
 INNER JOIN Kunder ON Bestallningar.KundID = Kunder.KundID;
 
--- Visa antal beställningar per kund
-SELECT Kunder.Namn, COUNT(Bestallningar.OrderID) AS AntalBestallningar FROM Kunder
-INNER JOIN Bestallningar ON Kunder.KundID = Bestallningar.KundID 
-GROUP BY Kunder.Namn;
+-- LEFT JOIN: visa alla kunder, även de utan beställningar
+SELECT Kunder.Namn, Bestallningar.OrderID, Bestallningar.Datum, Bestallningar.Totalbelopp FROM Kunder
+LEFT JOIN Bestallningar ON Kunder.KundID = Bestallningar.KundID
+ORDER BY Kunder.Namn;
 
--- Visa kunder som gjort fler än 1 beställning
+-- GROUP BY: räkna antal beställningar per kund
+SELECT Kunder.Namn, COUNT(Bestallningar.OrderID) AS AntalBestallningar FROM Kunder
+LEFT JOIN Bestallningar ON Kunder.KundID = Bestallningar.KundID
+GROUP BY Kunder.KundID, Kunder.Namn;
+
+-- HAVING: visa kunder som gjort fler än 2 beställningar
 SELECT Kunder.Namn, COUNT(Bestallningar.OrderID) AS AntalBestallningar FROM Kunder
 INNER JOIN Bestallningar ON Kunder.KundID = Bestallningar.KundID
-GROUP BY Kunder.Namn
-HAVING COUNT(Bestallningar.OrderID) > 1;
+GROUP BY Kunder.KundID, Kunder.Namn
+HAVING COUNT(Bestallningar.OrderID) > 2;
 
--- DROP DATABASE Bokstugan; -- Droppar databasen
+-- ========================
+-- KONTROLLERA MIN DATABAS
+-- ========================
+
+-- Visa lagersaldo efter att orderrader lagts till
+SELECT BokID, Titel, Lagerstatus
+FROM Bocker;
+
+-- Visa logg över registrerade kunder
+SELECT * FROM KundLogg;
+
+-- Visa alla tabeller
+SELECT * FROM Kunder;
+SELECT * FROM Bocker;
+SELECT * FROM Bestallningar;
+SELECT * FROM Orderrader;
+SELECT * FROM KundLogg;
