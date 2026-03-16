@@ -36,7 +36,6 @@ CREATE TABLE Bestallningar (
 );
 
 -- Tabell: Orderrader
-
 CREATE TABLE Orderrader (
     OrderradID INT AUTO_INCREMENT PRIMARY KEY,						-- Ett unikt id för varje orderrad så att man vet vilken order det är.
     OrderID INT NOT NULL,
@@ -46,6 +45,7 @@ CREATE TABLE Orderrader (
 	FOREIGN KEY (OrderID) REFERENCES Bestallningar(OrderID), 		-- Hämtar primärnyckel från OrderID i Beställningar-tabellen.
 	FOREIGN KEY (BokID) REFERENCES Bocker(BokID) 					-- Hämtar primärnyckel från BokID i Böcker-tabellen.
 );
+
 -- Loggtabell för nya kunder
 CREATE TABLE KundLogg (
     LoggID INT AUTO_INCREMENT PRIMARY KEY,
@@ -54,8 +54,12 @@ CREATE TABLE KundLogg (
     RegistreradDatum TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- =====
+-- INDEX
+-- =====
+
 -- Index på e-post i Kunder
-CREATE INDEX idx_epost ON Kunder(Epost);
+CREATE INDEX index_epost ON Kunder(Epost);
 
 -- Se vårt index
 SHOW INDEX FROM Kunder;
