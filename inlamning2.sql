@@ -228,3 +228,37 @@ SELECT * FROM Bocker;
 SELECT * FROM Bestallningar;
 SELECT * FROM Orderrader;
 SELECT * FROM KundLogg;
+
+-- Visa mina triggers
+SHOW TRIGGERS FROM Bokstugan;
+
+-- Testa trigger 1
+START TRANSACTION;
+
+INSERT INTO Kunder (Namn, Epost, Telefon, Adress)
+VALUES ('Trigger Test', 'trigger@test.com', '070-0000000', 'Testgatan 10');
+
+SELECT * FROM KundLogg
+WHERE Namn = 'Trigger Test';
+
+ROLLBACK;
+
+
+-- Testa trigger 2
+START TRANSACTION;
+
+SELECT BokID, Titel, Lagerstatus
+FROM Bocker
+WHERE BokID = 2;
+
+INSERT INTO Bestallningar (KundID, Totalbelopp)
+VALUES (1, 159.00);
+
+INSERT INTO Orderrader (OrderID, BokID, Antal, Pris)
+VALUES (LAST_INSERT_ID(), 2, 1, 159.00);
+
+SELECT BokID, Titel, Lagerstatus
+FROM Bocker
+WHERE BokID = 2;
+
+ROLLBACK;
